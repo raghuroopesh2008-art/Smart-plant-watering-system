@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Plant Watering Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #F3EFE6;
+      --ink: #1F2A22;
+      --moss: #2F4A3A;
+      --clay: #B5563A;
+      --water: #3F7F8C;
+      --card: #FFFDF8;
+      --line: #D8D0BE;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+    header, main, footer { max-width: 720px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
+    header { padding-top: 40px; }
+    h1 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(2rem, 6vw, 2.8rem);
+      font-weight: 700;
+      color: var(--moss);
+      margin: 0;
+    }
+    header p { margin: 8px 0 0; opacity: 0.8; }
+    main { display: grid; gap: 20px; padding-top: 24px; padding-bottom: 40px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 24px;
+    }
+    .field { margin-bottom: 18px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      font: inherit;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+    }
+    input:focus-visible { outline: 3px solid var(--water); outline-offset: 1px; }
+    .error { color: var(--clay); font-weight: 600; min-height: 1.4em; margin: 8px 0 0; }
+    button {
+      background: var(--moss);
+      color: #fff;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 24px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #243a2d; }
+    button:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
+
+    .branches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 20px; }
+    .branch {
+      border-radius: 14px;
+      padding: 14px 8px;
+      text-align: center;
+      border: 2px solid transparent;
+      opacity: 0.4;
+    }
+    .branch.active { opacity: 1; border-color: var(--ink); }
+    .b-dry { background: #F6DCD2; }
+    .b-mod { background: #F8EBC4; }
+    .b-wet { background: #D3E6E9; }
+    .branch strong { display: block; font-size: 0.95rem; }
+    .branch span { display: block; font-size: 0.85rem; margin-top: 4px; }
+
+    .report h2 {
+      font-family: Fraunces, Georgia, serif;
+      color: var(--moss);
+      margin: 0 0 4px;
+      font-size: 1.6rem;
+    }
+    .reading {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 2.4rem;
+      color: var(--moss);
+      margin: 4px 0 12px;
+    }
+    .report p { margin: 6px 0; }
+    .hidden { display: none; }
+    footer { font-size: 0.85rem; opacity: 0.7; text-align: center; padding-bottom: 32px; }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Smart Plant Watering</h1>
+    <p>Enter a plant and its soil moisture. The assistant tells you whether to water it.</p>
+  </header>
+
+  <main>
+    <section class="card" aria-labelledby="input-title">
+      <h2 id="input-title" class="visually-hidden" style="position:absolute;left:-9999px;">Enter plant details</h2>
+      <form id="plant-form" novalidate>
+        <div class="field">
+          <label for="plant-name">Plant name</label>
+          <input id="plant-name" type="text" placeholder="For example: Tulsi" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="moisture">Soil moisture (0 to 100 %)</label>
+          <input id="moisture" type="number" min="0" max="100" step="1" placeholder="For example: 45">
+        </div>
+        <button type="submit">Analyse moisture</button>
+        <p id="error" class="error" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="result" class="card report hidden" aria-live="polite">
+      <p class="step" id="result-plant"></p>
+      <div class="reading" id="reading"></div>
+      <div class="branches" aria-label="Decision path">
+        <div class="branch b-dry" id="branch-dry">
+          <strong>Below 30%</strong>
+          <span>Dry</span>
+          <span>Water plant</span>
+        </div>
+        <div class="branch b-mod" id="branch-mod">
+          <strong>30 to 59%</strong>
+          <span>Moderate</span>
+          <span>Little water</span>
+        </div>
+        <div class="branch b-wet" id="branch-wet">
+          <strong>60 to 100%</strong>
+          <span>Wet</span>
+          <span>No watering</span>
+        </div>
+      </div>
+      <div id="report-body" class="report"></div>
+      <p style="margin-top:20px;">
+        <button type="button" id="reset-btn">Check another plant</button>
+      </p>
+    </section>
+  </main>
+
+  <footer>Smart Plant Watering Assistant</footer>
+
+  <script>
+    const form = document.getElementById('plant-form');
+    const nameInput = document.getElementById('plant-name');
+    const moistureInput = document.getElementById('moisture');
+    const errorEl = document.getElementById('error');
+    const resultEl = document.getElementById('result');
+    const resultPlant = document.getElementById('result-plant');
+    const readingEl = document.getElementById('reading');
+    const reportBody = document.getElementById('report-body');
+    const branches = {
+      dry: document.getElementById('branch-dry'),
+      moderate: document.getElementById('branch-mod'),
+      wet: document.getElementById('branch-wet')
+    };
+
+    // Step 2 of the flowchart: analyse the moisture percentage.
+    // Step 3 of the flowchart: choose the branch.
+    function decide(moisture) {
+      if (moisture < 30) {
+        return {
+          key: 'dry',
+          status: 'Dry',
+          action: 'Water the plant now.',
+          advice: 'The soil is too dry. Give the plant a full watering and check again later.'
+        };
+      }
+      if (moisture < 60) {
+        return {
+          key: 'moderate',
+          status: 'Moderate',
+          action: 'Give only a little water.',
+          advice: 'The soil has enough moisture. A small amount of water is enough for now.'
+        };
+      }
+      return {
+        key: 'wet',
+        status: 'Wet',
+        action: 'Do not water.',
+        advice: 'The soil is already wet. Watering now could cause root rot, so skip it.'
+      };
+    }
+
+    function showError(message) {
+      errorEl.textContent = message;
+    }
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      showError('');
+
+      const plant = nameInput.value.trim();
+      const raw = moistureInput.value.trim();
+      const moisture = Number(raw);
+
+      // Step 1 of the flowchart: validate the input.
+      if (plant === '') {
+        showError('Please enter a plant name.');
+        nameInput.focus();
+        return;
+      }
+      if (raw === '' || !Number.isInteger(moisture) || moisture < 0 || moisture > 100) {
+        showError('Please enter a whole number from 0 to 100.');
+        moistureInput.focus();
+        return;
+      }
+
+      const decision = decide(moisture);
+
+      // Highlight the matching branch in the mini flowchart.
+      Object.entries(branches).forEach(([key, el]) => {
+        el.classList.toggle('active', key === decision.key);
+      });
+
+      resultPlant.textContent = 'Report for ' + plant;
+      readingEl.textContent = moisture + '% ' + decision.status;
+
+      // Build the report with textContent to keep user input safe.
+      reportBody.textContent = '';
+      const action = document.createElement('p');
+      const strong = document.createElement('strong');
+      strong.textContent = 'Recommendation: ' + decision.action;
+      action.appendChild(strong);
+      const advice = document.createElement('p');
+      advice.textContent = decision.advice;
+      reportBody.append(action, advice);
+
+      resultEl.classList.remove('hidden');
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      form.reset();
+      resultEl.classList.add('hidden');
+      showError('');
+      nameInput.focus();
+    });
+  </script>
+</body>
+</html>
